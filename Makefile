@@ -5,6 +5,9 @@
 export CGO_ENABLED=1
 export GO111MODULE=on
 
+build-tools:=$(shell if [ ! -d "./build/build-tools" ]; then mkdir -p build && cd build && git clone https://github.com/onosproject/build-tools.git; fi)
+include ./build/build-tools/make/onf-common.mk
+
 .PHONY: build
 
 ONOS_PROTOC_VERSION := v0.6.9
@@ -12,9 +15,6 @@ ONOS_PROTOC_VERSION := v0.6.9
 build: # @HELP build the Go binaries (default)
 build:
 	go build github.com/onosproject/onos-net-lib/pkg/...
-
-build-tools:=$(shell if [ ! -d "./build/build-tools" ]; then cd build && git clone https://github.com/onosproject/build-tools.git; fi)
-include ./build/build-tools/make/onf-common.mk
 
 mod-update: # @HELP Download the dependencies to the vendor folder
 	go mod tidy
@@ -29,7 +29,7 @@ test: mod-lint build linters license
 	go test -race github.com/onosproject/onos-net-lib/pkg/...
 
 jenkins-test:  # @HELP run the unit tests and source code validation producing a junit style report for Jenkins
-jenkins-test: mod-lint build linters license
+jenkins-test: mod-lint build linters license jenkins-tools
 	TEST_PACKAGES=github.com/onosproject/onos-net-lib/pkg/... ./build/build-tools/build/jenkins/make-unit
 
 publish: # @HELP publish version on github and dockerhub
@@ -37,7 +37,6 @@ publish: # @HELP publish version on github and dockerhub
 
 jenkins-publish: jenkins-tools # @HELP Jenkins calls this to publish artifacts
 	./build/build-tools/release-merge-commit
-	./build/build-tools/build/docs/push-docs
 
 all: test
 
