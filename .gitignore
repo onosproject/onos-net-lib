@@ -1,9 +1,14 @@
+# SPDX-FileCopyrightText: 2020-present Open Networking Foundation <info@opennetworking.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+*.log
 
 # Test binary, built with `go test -c`
 *.test
@@ -13,3 +18,14 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# Jenkins report files
+*report*.xml
+*coverage*.xml
+*-output.out
+
+# build tools
+build/build-tools
+vendor
+
+
