@@ -7,7 +7,6 @@ package p4utils
 import (
 	p4api "github.com/p4lang/p4runtime/go/p4/v1"
 	"github.com/stretchr/testify/assert"
-	"math/rand"
 	"testing"
 )
 
@@ -38,17 +37,6 @@ func TestLoadP4Info(t *testing.T) {
 	// Test non-sensical P4Info
 	_, err = LoadP4Info("utils_test.go")
 	assert.Error(t, err)
-}
-
-func TestGeneration(t *testing.T) {
-	info, err := LoadP4Info("../../pipelines/p4info.txt")
-	assert.NoError(t, err)
-
-	tl := int32(len(info.Tables))
-	for i := 0; i < 10000; i++ {
-		tableInfo := info.Tables[rand.Int31n(tl)]
-		GenerateTableEntry(tableInfo, 123, nil)
-	}
 }
 
 func TestArbitration(t *testing.T) {
