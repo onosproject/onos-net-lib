@@ -10,6 +10,7 @@ import (
 	p4api "github.com/p4lang/p4runtime/go/p4/v1"
 	"google.golang.org/protobuf/encoding/prototext"
 	"io/ioutil"
+	"time"
 )
 
 // CreateMastershipArbitration returns stream message request with the specified election ID components
@@ -20,6 +21,14 @@ func CreateMastershipArbitration(electionID *p4api.Uint128, role *p4api.Role) *p
 				ElectionId: electionID,
 				Role:       role,
 			}}}
+}
+
+// TimeBasedElectionID returns election ID generated from the UnixNano timestamp
+// High contains seconds, Low contains remaining nanos
+func TimeBasedElectionID() *p4api.Uint128 {
+	now := time.Now()
+	t := now.UnixNano()
+	return &p4api.Uint128{High: uint64(t / 1e9), Low: uint64(t % 1e9)}
 }
 
 // LoadP4Info loads the specified file containing protoJSON representation of a P4Info and returns its descriptor

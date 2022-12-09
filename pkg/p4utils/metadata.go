@@ -49,6 +49,21 @@ func NewControllerMetadataCodec(info *p4info.P4Info) *ControllerMetadataCodec {
 	return cmc
 }
 
+// EgressPortMetadataID returns egress port metadata ID
+func (c *ControllerMetadataCodec) EgressPortMetadataID() uint32 {
+	return c.egress.id
+}
+
+// InressPortMetadataID returns ingress port metadata ID
+func (c *ControllerMetadataCodec) InressPortMetadataID() uint32 {
+	return c.ingress.id
+}
+
+// RoleAgentIDPortMetadataID returns role agent ID metadata ID
+func (c *ControllerMetadataCodec) RoleAgentIDPortMetadataID() uint32 {
+	return c.roleid.id
+}
+
 func copyMeta(md *p4info.ControllerPacketMetadata_Metadata, m *meta) {
 	m.id = md.Id
 	m.size = md.Bitwidth
