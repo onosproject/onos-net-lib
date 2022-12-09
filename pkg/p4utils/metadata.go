@@ -59,8 +59,8 @@ func (c *ControllerMetadataCodec) InressPortMetadataID() uint32 {
 	return c.ingress.id
 }
 
-// RoleAgentIDPortMetadataID returns role agent ID metadata ID
-func (c *ControllerMetadataCodec) RoleAgentIDPortMetadataID() uint32 {
+// RoleAgentIDMetadataID returns role agent ID metadata ID
+func (c *ControllerMetadataCodec) RoleAgentIDMetadataID() uint32 {
 	return c.roleid.id
 }
 
