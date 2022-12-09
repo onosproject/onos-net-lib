@@ -3,9 +3,10 @@ module github.com/onosproject/onos-net-lib
 go 1.16
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/gogo/protobuf v1.3.1
 	github.com/google/gopacket v1.1.19
 	github.com/kr/pretty v0.3.0 // indirect
+	github.com/onosproject/onos-api/go v0.10.5
 	github.com/openconfig/gnmi v0.0.0-20220920173703-480bf53a74d2
 	github.com/p4lang/p4runtime v1.4.0-rc.5
 	github.com/rogpeppe/go-internal v1.8.1 // indirect

@@ -6,12 +6,44 @@
 package p4utils
 
 import (
+	gogo "github.com/gogo/protobuf/types"
+	"github.com/onosproject/onos-api/go/onos/stratum"
 	p4info "github.com/p4lang/p4runtime/go/p4/config/v1"
 	p4api "github.com/p4lang/p4runtime/go/p4/v1"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/types/known/anypb"
 	"io/ioutil"
 	"time"
 )
+
+// TimeBasedElectionID returns election ID generated from the UnixNano timestamp
+// High contains seconds, Low contains remaining nanos
+func TimeBasedElectionID() *p4api.Uint128 {
+	now := time.Now()
+	t := now.UnixNano()
+	return &p4api.Uint128{High: uint64(t / 1e9), Low: uint64(t % 1e9)}
+}
+
+// NewStratumRole produces a P4 Role with stratum.P4RoleConfig, and configured using the supplied parameters.
+func NewStratumRole(roleName string, roleAgentIDMetaDataID uint32, roleAgentID []byte,
+	receivesPacketIns bool, canPushPipeline bool) *p4api.Role {
+	roleConfig := &stratum.P4RoleConfig{
+		PacketInFilter: &stratum.P4RoleConfig_PacketFilter{
+			MetadataId: roleAgentIDMetaDataID,
+			Value:      roleAgentID,
+		},
+		ReceivesPacketIns: receivesPacketIns,
+		CanPushPipeline:   canPushPipeline,
+	}
+	any, _ := gogo.MarshalAny(roleConfig)
+	return &p4api.Role{
+		Name: roleName,
+		Config: &anypb.Any{
+			TypeUrl: any.TypeUrl,
+			Value:   any.Value,
+		},
+	}
+}
 
 // CreateMastershipArbitration returns stream message request with the specified election ID components
 func CreateMastershipArbitration(electionID *p4api.Uint128, role *p4api.Role) *p4api.StreamMessageRequest {
@@ -21,14 +53,6 @@ func CreateMastershipArbitration(electionID *p4api.Uint128, role *p4api.Role) *p
 				ElectionId: electionID,
 				Role:       role,
 			}}}
-}
-
-// TimeBasedElectionID returns election ID generated from the UnixNano timestamp
-// High contains seconds, Low contains remaining nanos
-func TimeBasedElectionID() *p4api.Uint128 {
-	now := time.Now()
-	t := now.UnixNano()
-	return &p4api.Uint128{High: uint64(t / 1e9), Low: uint64(t % 1e9)}
 }
 
 // LoadP4Info loads the specified file containing protoJSON representation of a P4Info and returns its descriptor
