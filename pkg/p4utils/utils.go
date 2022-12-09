@@ -75,3 +75,33 @@ func P4InfoBytes(info *p4info.P4Info) []byte {
 	bytes, _ := prototext.Marshal(info)
 	return bytes
 }
+
+// FindTable returns the named table from the specified P4Info; nil if not found
+func FindTable(info *p4info.P4Info, tableName string) *p4info.Table {
+	for _, table := range info.Tables {
+		if table.Preamble.Name == tableName {
+			return table
+		}
+	}
+	return nil
+}
+
+// FindAction returns the named action from the specified P4Info; nil if not found
+func FindAction(info *p4info.P4Info, actionName string) *p4info.Action {
+	for _, action := range info.Actions {
+		if action.Preamble.Name == actionName {
+			return action
+		}
+	}
+	return nil
+}
+
+// FindActionParam returns the named action from the specified P4Info; nil if not found
+func FindActionParam(action *p4info.Action, paramName string) *p4info.Action_Param {
+	for _, param := range action.Params {
+		if param.Name == paramName {
+			return param
+		}
+	}
+	return nil
+}

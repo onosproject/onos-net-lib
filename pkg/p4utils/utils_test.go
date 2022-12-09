@@ -5,7 +5,6 @@
 package p4utils
 
 import (
-	p4api "github.com/p4lang/p4runtime/go/p4/v1"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -40,9 +39,23 @@ func TestLoadP4Info(t *testing.T) {
 }
 
 func TestArbitration(t *testing.T) {
-	eid := &p4api.Uint128{High: 1, Low: 2}
-	mar := CreateMastershipArbitration(eid, nil)
+	eid := TimeBasedElectionID()
+	mar := CreateMastershipArbitration(eid, NewStratumRole("foo", 1, []byte("\x03"), true, true))
 	assert.NotNil(t, mar.GetArbitration())
-	assert.Equal(t, mar.GetArbitration().ElectionId.High, uint64(1))
-	assert.Equal(t, mar.GetArbitration().ElectionId.Low, uint64(2))
+	assert.Equal(t, eid.High, mar.GetArbitration().ElectionId.High)
+	assert.Equal(t, eid.Low, mar.GetArbitration().ElectionId.Low)
+}
+
+func TestFindStuff(t *testing.T) {
+	info, err := LoadP4Info("../../pipelines/p4info.txt")
+	assert.NoError(t, err)
+
+	table := FindTable(info, "FabricIngress.acl.acl")
+	assert.NotNil(t, table)
+
+	action := FindAction(info, "FabricIngress.acl.punt_to_cpu")
+	assert.NotNil(t, action)
+
+	param := FindActionParam(action, "set_role_agent_id")
+	assert.NotNil(t, param)
 }

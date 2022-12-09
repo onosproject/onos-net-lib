@@ -53,3 +53,13 @@ func TestPacketInMetadata(t *testing.T) {
 	assert.Equal(t, pim.IngressPort, pom1.IngressPort)
 	assert.Equal(t, pim.RoleAgentID, pom1.RoleAgentID)
 }
+
+func TestCodecAccessors(t *testing.T) {
+	info, err := LoadP4Info("../../pipelines/p4info.txt")
+	assert.NoError(t, err)
+
+	codec := NewControllerMetadataCodec(info)
+	assert.Equal(t, uint32(2), codec.EgressPortMetadataID())
+	assert.Equal(t, uint32(2), codec.InressPortMetadataID())
+	assert.Equal(t, uint32(4), codec.RoleAgentIDMetadataID())
+}
