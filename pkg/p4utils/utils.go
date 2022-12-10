@@ -86,6 +86,16 @@ func FindTable(info *p4info.P4Info, tableName string) *p4info.Table {
 	return nil
 }
 
+// FindTableMatchField returns the named match field from the specified table; nil if not found
+func FindTableMatchField(table *p4info.Table, fieldName string) *p4info.MatchField {
+	for _, field := range table.MatchFields {
+		if field.Name == fieldName {
+			return field
+		}
+	}
+	return nil
+}
+
 // FindAction returns the named action from the specified P4Info; nil if not found
 func FindAction(info *p4info.P4Info, actionName string) *p4info.Action {
 	for _, action := range info.Actions {
@@ -96,7 +106,7 @@ func FindAction(info *p4info.P4Info, actionName string) *p4info.Action {
 	return nil
 }
 
-// FindActionParam returns the named action from the specified P4Info; nil if not found
+// FindActionParam returns the named action parameter from the specified action; nil if not found
 func FindActionParam(action *p4info.Action, paramName string) *p4info.Action_Param {
 	for _, param := range action.Params {
 		if param.Name == paramName {

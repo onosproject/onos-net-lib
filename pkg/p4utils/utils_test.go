@@ -53,6 +53,9 @@ func TestFindStuff(t *testing.T) {
 	table := FindTable(info, "FabricIngress.acl.acl")
 	assert.NotNil(t, table)
 
+	field := FindTableMatchField(table, "eth_type")
+	assert.NotNil(t, field)
+
 	action := FindAction(info, "FabricIngress.acl.punt_to_cpu")
 	assert.NotNil(t, action)
 
