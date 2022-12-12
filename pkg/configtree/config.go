@@ -30,9 +30,6 @@ type Configurable interface {
 
 	// RemoveSubscribeResponder removes the specified subscribe responder from the specified device
 	RemoveSubscribeResponder(responder *SubscribeResponder)
-
-	// GetSubscribeResponders returns list of currently registered subscribe responders
-	GetSubscribeResponders() []SubscribeResponder
 }
 
 // SubscribeResponder is an abstraction for sending SubscribeResponse messages to controllers
@@ -162,5 +159,14 @@ func (c *GNMIConfigurable) RemoveSubscribeResponder(responder SubscribeResponder
 			c.subscribeResponders = append(c.subscribeResponders[:i], c.subscribeResponders[i+1:]...)
 			return
 		}
+	}
+}
+
+// SendToAllResponders sends the specified notification(s) to all responders
+func (c *GNMIConfigurable) SendToAllResponders(response *gnmi.SubscribeResponse) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	for _, r := range c.subscribeResponders {
+		r.Send(response)
 	}
 }
