@@ -6,10 +6,13 @@ package configtree
 
 import (
 	"github.com/onosproject/onos-lib-go/pkg/errors"
+	"github.com/onosproject/onos-lib-go/pkg/logging"
 	utils "github.com/onosproject/onos-net-lib/pkg/gnmiutils"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"sync"
 )
+
+var log = logging.GetLogger("config")
 
 // Configurable provides an abstraction of a config tree-based configuration mechanism
 type Configurable interface {
@@ -18,18 +21,6 @@ type Configurable interface {
 
 	// UpdateConfig updates external target state using the config tree state.
 	UpdateConfig()
-
-	// ProcessConfigGet provides internals of a gNMI get request
-	ProcessConfigGet(prefix *gnmi.Path, paths []*gnmi.Path) ([]*gnmi.Notification, error)
-
-	// ProcessConfigSet provides internals of a gNMI set request
-	ProcessConfigSet(prefix *gnmi.Path, updates []*gnmi.Update, replacements []*gnmi.Update, deletes []*gnmi.Path) ([]*gnmi.UpdateResult, error)
-
-	// AddSubscribeResponder adds the given subscribe responder to the specified device
-	AddSubscribeResponder(responder *SubscribeResponder)
-
-	// RemoveSubscribeResponder removes the specified subscribe responder from the specified device
-	RemoveSubscribeResponder(responder *SubscribeResponder)
 }
 
 // SubscribeResponder is an abstraction for sending SubscribeResponse messages to controllers
@@ -45,18 +36,19 @@ type SubscribeResponder interface {
 
 // GNMIConfigurable provides a base implementation of a gNMI server backed by a config tree
 type GNMIConfigurable struct {
-	Configurable
+	Configurable        Configurable
 	root                *Node
-	lock                sync.RWMutex
+	slock               sync.RWMutex
 	subscribeResponders []SubscribeResponder
 }
 
 // NewGNMIConfigurable creates a new gNMI configurable backed by the specified config tree root.
 func NewGNMIConfigurable(root *Node) *GNMIConfigurable {
-	return &GNMIConfigurable{
+	c := &GNMIConfigurable{
 		root:                root,
 		subscribeResponders: make([]SubscribeResponder, 0, 4),
 	}
+	return c
 }
 
 // Root returns the root node of the backing config tree
@@ -66,7 +58,10 @@ func (c *GNMIConfigurable) Root() *Node {
 
 // ProcessConfigGet provides internals of a gNMI get request
 func (c *GNMIConfigurable) ProcessConfigGet(prefix *gnmi.Path, paths []*gnmi.Path) ([]*gnmi.Notification, error) {
-	c.RefreshConfig()
+	log.Infof("Processing gNMI get request: %+v", c)
+	if c.Configurable != nil {
+		c.Configurable.RefreshConfig()
+	}
 
 	notifications := make([]*gnmi.Notification, 0, len(paths))
 	rootNode := c.root
@@ -129,8 +124,11 @@ func (c *GNMIConfigurable) ProcessConfigSet(prefix *gnmi.Path, updates []*gnmi.U
 		rootNode.AddPath(utils.ToString(update.Path), update.Val)
 	}
 
+	if c.Configurable != nil {
+		c.Configurable.UpdateConfig()
+	}
+
 	// TODO: Implement proper result error reporting
-	c.UpdateConfig()
 	return results, nil
 }
 
@@ -145,15 +143,15 @@ func toUpdate(node *Node) *gnmi.Update {
 
 // AddSubscribeResponder adds the given subscribe responder to the specified device
 func (c *GNMIConfigurable) AddSubscribeResponder(responder SubscribeResponder) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	c.slock.Lock()
+	defer c.slock.Unlock()
 	c.subscribeResponders = append(c.subscribeResponders, responder)
 }
 
 // RemoveSubscribeResponder removes the specified subscribe responder from the specified device
 func (c *GNMIConfigurable) RemoveSubscribeResponder(responder SubscribeResponder) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	c.slock.Lock()
+	defer c.slock.Unlock()
 	for i, r := range c.subscribeResponders {
 		if r == responder {
 			c.subscribeResponders = append(c.subscribeResponders[:i], c.subscribeResponders[i+1:]...)
@@ -164,8 +162,8 @@ func (c *GNMIConfigurable) RemoveSubscribeResponder(responder SubscribeResponder
 
 // SendToAllResponders sends the specified notification(s) to all responders
 func (c *GNMIConfigurable) SendToAllResponders(response *gnmi.SubscribeResponse) {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
+	c.slock.RLock()
+	defer c.slock.RUnlock()
 	for _, r := range c.subscribeResponders {
 		r.Send(response)
 	}
