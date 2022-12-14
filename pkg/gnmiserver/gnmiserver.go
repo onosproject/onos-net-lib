@@ -22,12 +22,12 @@ var log = logging.GetLogger("gnmiserver")
 
 // GNMIServer provids gNMI access to a backing GNMIConfigurable
 type GNMIServer struct {
-	configurable *configtree.GNMIConfigurable
+	gnmiConfigurable *configtree.GNMIConfigurable
 }
 
 // NewGNMIServer creates a new gNMI server backed by the specified gNMI configurable entity
 func NewGNMIServer(configurable *configtree.GNMIConfigurable) *GNMIServer {
-	return &GNMIServer{configurable: configurable}
+	return &GNMIServer{gnmiConfigurable: configurable}
 }
 
 // Capabilities allows the client to retrieve the set of capabilities that
@@ -66,7 +66,7 @@ func getGNMIServiceVersion() string {
 // Reference: gNMI Specification Section 3.3
 func (s *GNMIServer) Get(ctx context.Context, request *gnmi.GetRequest) (*gnmi.GetResponse, error) {
 	log.Infof("gNMI get request received")
-	notifications, err := s.configurable.ProcessConfigGet(request.Prefix, request.Path)
+	notifications, err := s.gnmiConfigurable.ProcessConfigGet(request.Prefix, request.Path)
 	if err != nil {
 		return nil, errors.Status(err).Err()
 	}
@@ -81,7 +81,7 @@ func (s *GNMIServer) Get(ctx context.Context, request *gnmi.GetRequest) (*gnmi.G
 // Reference: gNMI Specification Section 3.4
 func (s *GNMIServer) Set(ctx context.Context, request *gnmi.SetRequest) (*gnmi.SetResponse, error) {
 	log.Infof("gNMI set request received")
-	results, err := s.configurable.ProcessConfigSet(request.Prefix, request.Update, request.Replace, request.Delete)
+	results, err := s.gnmiConfigurable.ProcessConfigSet(request.Prefix, request.Update, request.Replace, request.Delete)
 	if err != nil {
 		return nil, errors.Status(err).Err()
 	}
@@ -104,7 +104,7 @@ type streamState struct {
 
 // Send sends the specified response to the subscription stream
 func (state *streamState) Send(response *gnmi.SubscribeResponse) {
-	panic("implement me")
+	state.streamResponses <- response
 }
 
 // GetConnection returns the peer connection info for the stream channel
@@ -128,10 +128,10 @@ func (s *GNMIServer) Subscribe(server gnmi.GNMI_SubscribeServer) error {
 	if p, ok := peer.FromContext(server.Context()); ok {
 		responder.clientAddress = p.Addr.String()
 	}
-	s.configurable.AddSubscribeResponder(responder)
+	s.gnmiConfigurable.AddSubscribeResponder(responder)
 
 	// On stream closure, remove the responder
-	defer s.configurable.RemoveSubscribeResponder(responder)
+	defer s.gnmiConfigurable.RemoveSubscribeResponder(responder)
 
 	// Emit any queued-up messages in the background until we get an error or the context is closed
 	go func() {
@@ -151,7 +151,7 @@ func (s *GNMIServer) Subscribe(server gnmi.GNMI_SubscribeServer) error {
 	for {
 		req, err := server.Recv()
 		if err != nil {
-			if err != io.EOF {
+			if err == io.EOF {
 				log.Info("Client closed the subscription stream")
 				return nil
 			}
@@ -199,7 +199,7 @@ func (s *GNMIServer) processSubscribeRequest(state *streamState, request *gnmi.S
 
 func (s *GNMIServer) processSubscribeOnce(state *streamState, subscribe *gnmi.SubscriptionList) error {
 	paths := subcriptionPaths(subscribe)
-	notifications, _ := s.configurable.ProcessConfigGet(subscribe.Prefix, paths)
+	notifications, _ := s.gnmiConfigurable.ProcessConfigGet(subscribe.Prefix, paths)
 	// TODO: implement proper error handling; for now, just return what we got back
 	for _, notification := range notifications {
 		// Send messages synchronously
