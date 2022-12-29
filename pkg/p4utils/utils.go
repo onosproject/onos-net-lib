@@ -28,13 +28,18 @@ func TimeBasedElectionID() *p4api.Uint128 {
 func NewStratumRole(roleName string, roleAgentIDMetaDataID uint32, roleAgentID []byte,
 	receivesPacketIns bool, canPushPipeline bool) *p4api.Role {
 	roleConfig := &stratum.P4RoleConfig{
-		PacketInFilter: &stratum.P4RoleConfig_PacketFilter{
-			MetadataId: roleAgentIDMetaDataID,
-			Value:      roleAgentID,
-		},
 		ReceivesPacketIns: receivesPacketIns,
 		CanPushPipeline:   canPushPipeline,
 	}
+
+	// Insert packet filter only if we're given role agent metadata ID and packet receipt is enabled
+	if receivesPacketIns && roleAgentIDMetaDataID > 0 {
+		roleConfig.PacketInFilter = &stratum.P4RoleConfig_PacketFilter{
+			MetadataId: roleAgentIDMetaDataID,
+			Value:      roleAgentID,
+		}
+	}
+
 	any, _ := gogo.MarshalAny(roleConfig)
 	return &p4api.Role{
 		Name: roleName,
