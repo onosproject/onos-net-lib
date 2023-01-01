@@ -8,6 +8,7 @@ package gnmiserver
 import (
 	"context"
 	protobuf "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/onosproject/onos-api/go/onos/misc"
 	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-net-lib/pkg/configtree"
@@ -16,6 +17,7 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
 	"io"
+	"time"
 )
 
 var log = logging.GetLogger("gnmiserver")
@@ -23,10 +25,11 @@ var log = logging.GetLogger("gnmiserver")
 // GNMIServer provids gNMI access to a backing GNMIConfigurable
 type GNMIServer struct {
 	gnmiConfigurable *configtree.GNMIConfigurable
+	logPrefix        string
 }
 
 // NewGNMIServer creates a new gNMI server backed by the specified gNMI configurable entity
-func NewGNMIServer(configurable *configtree.GNMIConfigurable) *GNMIServer {
+func NewGNMIServer(configurable *configtree.GNMIConfigurable, logPrefix string) *GNMIServer {
 	return &GNMIServer{gnmiConfigurable: configurable}
 }
 
@@ -65,7 +68,7 @@ func getGNMIServiceVersion() string {
 // client using the specified encoding.
 // Reference: gNMI Specification Section 3.3
 func (s *GNMIServer) Get(ctx context.Context, request *gnmi.GetRequest) (*gnmi.GetResponse, error) {
-	log.Infof("gNMI get request received")
+	log.Infof("%s: gNMI get request received", s.logPrefix)
 	notifications, err := s.gnmiConfigurable.ProcessConfigGet(request.Prefix, request.Path)
 	if err != nil {
 		return nil, errors.Status(err).Err()
@@ -80,7 +83,7 @@ func (s *GNMIServer) Get(ctx context.Context, request *gnmi.GetRequest) (*gnmi.G
 // to set the value to.
 // Reference: gNMI Specification Section 3.4
 func (s *GNMIServer) Set(ctx context.Context, request *gnmi.SetRequest) (*gnmi.SetResponse, error) {
-	log.Infof("gNMI set request received")
+	log.Infof("%s: gNMI set request received", s.logPrefix)
 	results, err := s.gnmiConfigurable.ProcessConfigSet(request.Prefix, request.Update, request.Replace, request.Delete)
 	if err != nil {
 		return nil, errors.Status(err).Err()
@@ -99,7 +102,7 @@ type streamState struct {
 	stream          gnmi.GNMI_SubscribeServer
 	req             *gnmi.SubscribeRequest
 	streamResponses chan *gnmi.SubscribeResponse
-	clientAddress   string
+	connection      *misc.Connection
 }
 
 // Send sends the specified response to the subscription stream
@@ -108,8 +111,8 @@ func (state *streamState) Send(response *gnmi.SubscribeResponse) {
 }
 
 // GetConnection returns the peer connection info for the stream channel
-func (state *streamState) GetClientAddress() string {
-	return state.clientAddress
+func (state *streamState) GetConnection() *misc.Connection {
+	return state.connection
 }
 
 // Subscribe allows a client to request the target to send it values
@@ -118,7 +121,7 @@ func (state *streamState) GetClientAddress() string {
 // (POLL), or sent as a one-off retrieval (ONCE).
 // Reference: gNMI Specification Section 3.5
 func (s *GNMIServer) Subscribe(server gnmi.GNMI_SubscribeServer) error {
-	log.Infof("gNMI subscribe request received")
+	log.Infof("%s: gNMI subscribe request received", s.logPrefix)
 
 	// Create and register a new record to track the state of this stream
 	responder := &streamState{
@@ -126,7 +129,11 @@ func (s *GNMIServer) Subscribe(server gnmi.GNMI_SubscribeServer) error {
 		streamResponses: make(chan *gnmi.SubscribeResponse, 128),
 	}
 	if p, ok := peer.FromContext(server.Context()); ok {
-		responder.clientAddress = p.Addr.String()
+		responder.connection = &misc.Connection{
+			FromAddress: p.Addr.String(),
+			Protocol:    "gnmi",
+			Time:        time.Now().Unix(),
+		}
 	}
 	s.gnmiConfigurable.AddSubscribeResponder(responder)
 
