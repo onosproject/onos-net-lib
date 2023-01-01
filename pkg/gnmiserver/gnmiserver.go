@@ -30,7 +30,7 @@ type GNMIServer struct {
 
 // NewGNMIServer creates a new gNMI server backed by the specified gNMI configurable entity
 func NewGNMIServer(configurable *configtree.GNMIConfigurable, logPrefix string) *GNMIServer {
-	return &GNMIServer{gnmiConfigurable: configurable}
+	return &GNMIServer{gnmiConfigurable: configurable, logPrefix: logPrefix}
 }
 
 // Capabilities allows the client to retrieve the set of capabilities that
