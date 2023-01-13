@@ -335,8 +335,8 @@ github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lN
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
-github.com/onosproject/onos-api/go v0.10.20 h1:YPBghtM7g2ZJWHjm4Zmt29iq2g3efO1hq5hNRA7ANYc=
-github.com/onosproject/onos-api/go v0.10.20/go.mod h1:R882+8UcxQBLpCopnnbBnemXtJ77UXnL2I1y5yHbq10=
+github.com/onosproject/onos-api/go v0.10.21 h1:rMxmH5UxOodgplTQkCO9+Iq3ZkgexBV6/Kel0c6Mcbg=
+github.com/onosproject/onos-api/go v0.10.21/go.mod h1:R882+8UcxQBLpCopnnbBnemXtJ77UXnL2I1y5yHbq10=
 github.com/onosproject/onos-lib-go v0.9.5 h1:Ix/tLzUGwFZxELtUD8x/Y6eqwRTZJZkJlJTtHK1/jGY=
 github.com/onosproject/onos-lib-go v0.9.5/go.mod h1:x1PBRofFb+araSLx0Az/OPEIH7GannKNq/4SqaywARE=
 github.com/openconfig/gnmi v0.0.0-20220920173703-480bf53a74d2 h1:3YLlQFLDsFTvruKoYBbuYqhCgsXMtNewSrLjNXcF/Sg=

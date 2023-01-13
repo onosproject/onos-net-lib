@@ -5,6 +5,7 @@
 package configtree
 
 import (
+	"github.com/onosproject/onos-api/go/onos/misc"
 	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	utils "github.com/onosproject/onos-net-lib/pkg/gnmiutils"
@@ -25,10 +26,8 @@ type Configurable interface {
 
 // SubscribeResponder is an abstraction for sending SubscribeResponse messages to controllers
 type SubscribeResponder interface {
-	// GetClientAddress returns the peer connection address
-	GetClientAddress() string
-
-	// TODO: move simapi.Connection to a neutral place and use that instead of a plain string above
+	// GetConnection returns the peer connection address
+	GetConnection() *misc.Connection
 
 	// Send queues up the specified response to asynchronously sends on the backing stream
 	Send(response *gnmi.SubscribeResponse)

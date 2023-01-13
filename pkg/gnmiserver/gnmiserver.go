@@ -143,6 +143,7 @@ func (s *GNMIServer) Subscribe(server gnmi.GNMI_SubscribeServer) error {
 	// Emit any queued-up messages in the background until we get an error or the context is closed
 	go func() {
 		for msg := range responder.streamResponses {
+			// FIXME: implement filtering for relevance to the subscription request
 			if err := server.Send(msg); err != nil {
 				return
 			}
