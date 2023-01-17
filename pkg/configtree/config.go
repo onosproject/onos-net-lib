@@ -24,6 +24,8 @@ type Configurable interface {
 	UpdateConfig()
 }
 
+// TODO: Add change tracking to facilitate implicit subscription notifications; presently servers must send these explicitly
+
 // SubscribeResponder is an abstraction for sending SubscribeResponse messages to controllers
 type SubscribeResponder interface {
 	// GetConnection returns the peer connection address
