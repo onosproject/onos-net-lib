@@ -115,6 +115,11 @@ func (state *streamState) GetConnection() *misc.Connection {
 	return state.connection
 }
 
+func (state *streamState) isRelevant(msg *pb.SubscribeResponse) bool {
+	// FIXME: implement filtering for relevance to the subscription request
+	return true
+}
+
 // Subscribe allows a client to request the target to send it values
 // of particular paths within the data tree. These values may be streamed
 // at a particular cadence (STREAM), sent one off on a long-lived channel
@@ -142,13 +147,21 @@ func (s *GNMIServer) Subscribe(server gnmi.GNMI_SubscribeServer) error {
 
 	// Emit any queued-up messages in the background until we get an error or the context is closed
 	go func() {
+		log.Infof("Sending stream responses...")
 		for msg := range responder.streamResponses {
-			// FIXME: implement filtering for relevance to the subscription request
+			if !responder.isRelevant(msg) {
+				continue
+			}
+			log.Infof("Sending stream response: %+v", msg)
 			if err := server.Send(msg); err != nil {
+				if err != io.EOF {
+					log.Warnf("Unable to send stream response: %+v", err)
+				}
 				return
 			}
 			select {
 			case <-server.Context().Done():
+				log.Infof("Stopped sending stream responses")
 				return
 			default:
 			}
