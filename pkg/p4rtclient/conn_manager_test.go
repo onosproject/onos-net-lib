@@ -235,13 +235,13 @@ func TestConnManager_Get(t *testing.T) {
 	target1 := createTestDestination(t, targetID1, deviceID1, true)
 	target2 := createTestDestination(t, targetID2, deviceID2, true)
 
-	err := connManager.Connect(ctx, target1)
+	_, err := connManager.Connect(ctx, target1)
 	assert.NoError(t, err)
 	conn1, err := connManager.GetByTarget(ctx, targetID1)
 	assert.NoError(t, err)
 	assert.NotNil(t, conn1)
 
-	err = connManager.Connect(ctx, target2)
+	_, err = connManager.Connect(ctx, target2)
 	assert.NoError(t, err)
 	conn2, err := connManager.GetByTarget(ctx, targetID2)
 	assert.NoError(t, err)
@@ -257,9 +257,7 @@ func TestP4RTConn_NonTLS(t *testing.T) {
 	defer cancel()
 	target1 := createTestDestination(t, targetID1, deviceID1, true)
 
-	err := connManager.Connect(ctx, target1)
-	assert.NoError(t, err)
-	conn, err := connManager.GetByTarget(ctx, targetID1)
+	conn, err := connManager.Connect(ctx, target1)
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 
@@ -277,9 +275,7 @@ func TestClient_Capabilities(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	target1 := createTestDestination(t, targetID1, deviceID1, true)
-	err := connManager.Connect(ctx, target1)
-	assert.NoError(t, err)
-	conn, err := connManager.GetByTarget(ctx, targetID1)
+	conn, err := connManager.Connect(ctx, target1)
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 
@@ -297,9 +293,7 @@ func TestClient_Write(t *testing.T) {
 	defer cancel()
 	target1 := createTestDestination(t, targetID1, deviceID1, true)
 
-	err := connManager.Connect(ctx, target1)
-	assert.NoError(t, err)
-	conn, err := connManager.GetByTarget(ctx, targetID1)
+	conn, err := connManager.Connect(ctx, target1)
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 
@@ -326,9 +320,7 @@ func TestConnManager_Watch(t *testing.T) {
 
 	target1 := createTestDestination(t, targetID1, deviceID1, true)
 
-	err = connManager.Connect(ctx, target1)
-	assert.NoError(t, err)
-	conn, err := connManager.GetByTarget(ctx, targetID1)
+	conn, err := connManager.Connect(ctx, target1)
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 	connEvent := <-ch
@@ -349,9 +341,7 @@ func TestClient_SetForwardingPipelineConfig(t *testing.T) {
 
 	target1 := createTestDestination(t, targetID1, deviceID1, true)
 
-	err := connManager.Connect(ctx, target1)
-	assert.NoError(t, err)
-	conn, err := connManager.GetByTarget(ctx, targetID1)
+	conn, err := connManager.Connect(ctx, target1)
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 

@@ -33,7 +33,7 @@ const (
 type ConnManager interface {
 	Get(ctx context.Context, connID ConnID) (Conn, bool)
 	GetByTarget(ctx context.Context, targetID topoapi.ID) (Client, error)
-	Connect(ctx context.Context, destination *Destination) error
+	Connect(ctx context.Context, destination *Destination) (Client, error)
 	Disconnect(ctx context.Context, targetID topoapi.ID) error
 	Watch(ctx context.Context, ch chan<- Conn) error
 }
@@ -78,7 +78,7 @@ func (m *connManager) GetByTarget(ctx context.Context, targetID topoapi.ID) (Cli
 }
 
 // Connect makes a gRPC connection to the target
-func (m *connManager) Connect(ctx context.Context, destination *Destination) error {
+func (m *connManager) Connect(ctx context.Context, destination *Destination) (Client, error) {
 	m.connsMu.RLock()
 	targetID := topoapi.ID(destination.TargetID)
 	if targetID == "" {
@@ -91,7 +91,7 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) err
 	p4rtClient, ok := m.targets[targetID]
 	m.connsMu.RUnlock()
 	if ok {
-		return errors.NewAlreadyExists("target '%s' already exists", targetID)
+		return nil, errors.NewAlreadyExists("target '%s' already exists", targetID)
 	}
 
 	m.connsMu.Lock()
@@ -99,7 +99,7 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) err
 
 	p4rtClient, ok = m.targets[targetID]
 	if ok {
-		return errors.NewAlreadyExists("target '%s' already exists", targetID)
+		return nil, errors.NewAlreadyExists("target '%s' already exists", targetID)
 	}
 
 	tlsOptions := destination.TLS
@@ -119,13 +119,13 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) err
 			log.Info("Loading default CA")
 			defaultCertPool, err := certs.GetCertPoolDefault()
 			if err != nil {
-				return err
+				return nil, err
 			}
 			tlsConfig.RootCAs = defaultCertPool
 		} else {
 			certPool, err := certs.GetCertPool(tlsOptions.CaCert)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			tlsConfig.RootCAs = certPool
 		}
@@ -133,14 +133,14 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) err
 			log.Info("Loading default certificates")
 			clientCerts, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
 			if err != nil {
-				return err
+				return nil, err
 			}
 			tlsConfig.Certificates = []tls.Certificate{clientCerts}
 		} else if tlsOptions.Cert != "" && tlsOptions.Key != "" {
 			// Load certs given for device
 			tlsCerts, err := setCertificate(tlsOptions.Cert, tlsOptions.Key)
 			if err != nil {
-				return errors.NewInvalid(err.Error())
+				return nil, errors.NewInvalid(err.Error())
 			}
 			tlsConfig.Certificates = []tls.Certificate{tlsCerts}
 		} else {
@@ -157,7 +157,7 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) err
 	p4rtClient, clientConn, err := connect(ctx, *destination, tlsConfig, opts...)
 	if err != nil {
 		log.Warnw("Failed to connect to the P4RT target %s: %s", "target ID", destination.TargetID, "error", err)
-		return err
+		return nil, err
 	}
 
 	m.targets[targetID] = p4rtClient
@@ -208,7 +208,7 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) err
 		}
 	}()
 
-	return nil
+	return p4rtClient, nil
 }
 
 // Disconnect disconnects a gRPC connection based on a given target ID
