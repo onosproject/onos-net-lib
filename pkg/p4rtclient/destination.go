@@ -1,8 +1,8 @@
-// SPDX-FileCopyrightText: 2022-present Intel Corporation
+// SPDX-FileCopyrightText: 2023-present Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package southbound
+package p4rtclient
 
 import (
 	"crypto/tls"

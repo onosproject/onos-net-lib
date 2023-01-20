@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package southbound
+package p4rtclient
 
 import (
 	"github.com/google/uuid"

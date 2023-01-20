@@ -2,7 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package southbound
+// Package p4rtclient ...
+package p4rtclient
 
 import (
 	"context"
