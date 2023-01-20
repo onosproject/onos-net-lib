@@ -11,10 +11,6 @@ import (
 	"time"
 )
 
-const (
-	defaultTimeout = 60 * time.Second
-)
-
 // Destination contains data used to connect to a server
 type Destination struct {
 	// Endpoint P4runtime server endpoint address

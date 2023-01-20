@@ -20,9 +20,14 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"math"
 	"sync"
+	"time"
 )
 
 var log = logging.GetLogger()
+
+const (
+	defaultTimeout = 60 * time.Second
+)
 
 // ConnManager p4rt connection manager
 type ConnManager interface {
@@ -79,6 +84,10 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) err
 	if targetID == "" {
 		targetID = topoapi.ID(fmt.Sprintf(destination.Endpoint.Address, ":", destination.Endpoint.Port))
 	}
+	if destination.Timeout == 0 {
+		destination.Timeout = defaultTimeout
+	}
+
 	p4rtClient, ok := m.targets[targetID]
 	m.connsMu.RUnlock()
 	if ok {
@@ -152,12 +161,6 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) err
 	}
 
 	m.targets[targetID] = p4rtClient
-	streamChannel, err := p4rtClient.p4runtimeClient.StreamChannel(context.Background())
-	if err != nil {
-		log.Errorw("Cannot open a p4rt stream for connection", "targetID", targetID, "error", err)
-		return err
-	}
-	p4rtClient.streamClient.streamChannel = streamChannel
 	go func() {
 		var conn Conn
 		state := clientConn.GetState()
@@ -180,12 +183,10 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) err
 			case connectivity.Ready:
 				if conn == nil {
 					conn = newConn(targetID, p4rtClient)
-					streamChannel, err := p4rtClient.p4runtimeClient.StreamChannel(context.Background())
 					if err != nil {
 						log.Warnw("Cannot open a p4rt stream for connection", "targetID", targetID, "error", err)
 						continue
 					}
-					p4rtClient.streamClient.streamChannel = streamChannel
 					m.addConn(conn)
 				}
 
@@ -301,15 +302,6 @@ func connect(ctx context.Context, d Destination, tlsConfig *tls.Config, opts ...
 	p4rtClient := &client{
 		grpcClient:      conn,
 		p4runtimeClient: cl,
-		writeClient: &writeClient{
-			p4runtimeClient: cl,
-		},
-		readClient: &readClient{
-			p4runtimeClient: cl,
-		},
-		streamClient: &streamClient{
-			p4runtimeClient: cl,
-		},
 	}
 
 	return p4rtClient, conn, nil

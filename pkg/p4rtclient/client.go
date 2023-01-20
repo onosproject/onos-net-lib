@@ -15,61 +15,40 @@ import (
 // Client P4runtime client interface
 type Client interface {
 	io.Closer
-	WriteClient
-	ReadClient
-	StreamClient
-	P4RTClient() p4api.P4RuntimeClient
-	SetForwardingPipelineConfig(ctx context.Context, request *p4api.SetForwardingPipelineConfigRequest, opts ...grpc.CallOption) (*p4api.SetForwardingPipelineConfigResponse, error)
-	GetForwardingPipelineConfig(ctx context.Context, request *p4api.GetForwardingPipelineConfigRequest, opts ...grpc.CallOption) (*p4api.GetForwardingPipelineConfigResponse, error)
+	Write(ctx context.Context, in *p4api.WriteRequest, opts ...grpc.CallOption) (*p4api.WriteResponse, error)
+	// Read one or more P4 entities from the target.
+	Read(ctx context.Context, in *p4api.ReadRequest, opts ...grpc.CallOption) (p4api.P4Runtime_ReadClient, error)
+
+	// SetForwardingPipelineConfig Sets the P4 forwarding-pipeline config.
+	SetForwardingPipelineConfig(ctx context.Context, in *p4api.SetForwardingPipelineConfigRequest, opts ...grpc.CallOption) (*p4api.SetForwardingPipelineConfigResponse, error)
+
+	// GetForwardingPipelineConfig Gets the current P4 forwarding-pipeline config
+	GetForwardingPipelineConfig(ctx context.Context, in *p4api.GetForwardingPipelineConfigRequest, opts ...grpc.CallOption) (*p4api.GetForwardingPipelineConfigResponse, error)
+	StreamChannel(ctx context.Context, opts ...grpc.CallOption) (p4api.P4Runtime_StreamChannelClient, error)
 	Capabilities(ctx context.Context, request *p4api.CapabilitiesRequest, opts ...grpc.CallOption) (*p4api.CapabilitiesResponse, error)
 }
 
 type client struct {
 	grpcClient      *grpc.ClientConn
 	p4runtimeClient p4api.P4RuntimeClient
-	writeClient     *writeClient
-	readClient      *readClient
-	streamClient    *streamClient
 }
 
-func (c *client) P4RTClient() p4api.P4RuntimeClient {
-	return c.p4runtimeClient
+func (c *client) StreamChannel(ctx context.Context, opts ...grpc.CallOption) (p4api.P4Runtime_StreamChannelClient, error) {
+	log.Debugw("Getting stream channel")
+	streamClient, err := c.p4runtimeClient.StreamChannel(ctx, opts...)
+	return streamClient, errors.FromGRPC(err)
 }
 
-func (c *client) PacketOut(packetOut *p4api.PacketOut) error {
-	err := c.streamClient.PacketOut(packetOut)
-	return errors.FromGRPC(err)
-}
-
-func (c *client) PacketIn(ch chan *p4api.PacketIn) error {
-	err := c.streamClient.PacketIn(ch)
-	return errors.FromGRPC(err)
-}
-
-func (c *client) RecvArbitrationResponse() (*p4api.StreamMessageResponse_Arbitration, error) {
-	response, err := c.streamClient.RecvArbitrationResponse()
-	return response, errors.FromGRPC(err)
-}
-
-func (c *client) SendArbitrationRequest(deviceID uint64, electionID uint64, role string) error {
-	err := c.streamClient.SendArbitrationRequest(deviceID, electionID, role)
-	return errors.FromGRPC(err)
-}
-
-func (c *client) ReadEntities(ctx context.Context, request *p4api.ReadRequest, ch chan *p4api.Entity, opts ...grpc.CallOption) error {
-	log.Debugw("Received read entities request", "request", request)
-	err := c.readClient.ReadEntities(ctx, request, ch, opts...)
-	if err != nil {
-		return errors.FromGRPC(err)
-	}
-	return nil
-
+func (c *client) Read(ctx context.Context, request *p4api.ReadRequest, opts ...grpc.CallOption) (p4api.P4Runtime_ReadClient, error) {
+	log.Debugw("Received Read request", "request", request)
+	readClient, err := c.p4runtimeClient.Read(ctx, request, opts...)
+	return readClient, errors.FromGRPC(err)
 }
 
 // Write Updates one or more P4 entities on the target.
 func (c *client) Write(ctx context.Context, request *p4api.WriteRequest, opts ...grpc.CallOption) (*p4api.WriteResponse, error) {
 	log.Debugw("Received Write request", "request", request)
-	writeResponse, err := c.writeClient.Write(ctx, request, opts...)
+	writeResponse, err := c.p4runtimeClient.Write(ctx, request, opts...)
 	return writeResponse, errors.FromGRPC(err)
 }
 

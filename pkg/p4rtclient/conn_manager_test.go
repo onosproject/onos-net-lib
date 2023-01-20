@@ -6,28 +6,23 @@ package southbound
 
 import (
 	"context"
-	"encoding/binary"
 	topoapi "github.com/onosproject/onos-api/go/onos/topo"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
 	p4api "github.com/p4lang/p4runtime/go/p4/v1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
-	"sync"
-	"time"
-
 	"io"
 	"testing"
 )
 
 const (
-	targetPort  = 9559
-	targetHost  = "localhost"
-	targetID1   = "packet-switch-1"
-	targetID2   = "packet-switch-2"
-	deviceID1   = 1
-	deviceID2   = 2
-	numPacketIn = 10
+	targetPort = 9559
+	targetHost = "localhost"
+	targetID1  = "packet-switch-1"
+	targetID2  = "packet-switch-2"
+	deviceID1  = 1
+	deviceID2  = 2
 )
 
 func newTestServer() *testServer {
@@ -217,7 +212,6 @@ func createTestDestination(t *testing.T, targetID string, deviceID uint64, insec
 	if insecure {
 		tlsOptions.Insecure = insecure
 	}
-	timeout := time.Second * 30
 	dest := &Destination{
 		TargetID: targetID,
 		DeviceID: uint64(1),
@@ -226,53 +220,9 @@ func createTestDestination(t *testing.T, targetID string, deviceID uint64, insec
 			Address: targetHost,
 			Port:    targetPort,
 		},
-		Timeout: timeout,
 	}
 
 	return dest
-}
-
-func TestClient_RecvPacketIn(t *testing.T) {
-	s := setup(t, getTLSServerConfig(t))
-
-	connManager := NewConnManager()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	target1 := createTestDestination(t, targetID1, deviceID1, true)
-
-	err := connManager.Connect(ctx, target1)
-	assert.NoError(t, err)
-	conn, err := connManager.GetByTarget(ctx, targetID1)
-	assert.NoError(t, err)
-	assert.NotNil(t, conn)
-	ch := make(chan *p4api.PacketIn)
-
-	err = conn.PacketIn(ch)
-	assert.NoError(t, err)
-
-	for i := 0; i < numPacketIn; i++ {
-		payload := make([]byte, 4)
-		binary.LittleEndian.PutUint32(payload, uint32(i))
-		err = conn.PacketOut(&p4api.PacketOut{
-			Payload: payload,
-		})
-		assert.NoError(t, err)
-	}
-
-	counter := 1
-	for packetIn := range ch {
-		payload := packetIn.Payload
-		payloadValue := binary.LittleEndian.Uint32(payload)
-		log.Infow("Received Packet In", "packetIn", payloadValue)
-		if counter == numPacketIn {
-			break
-		}
-		counter++
-	}
-	s.Stop()
-
 }
 
 func TestConnManager_Get(t *testing.T) {
@@ -387,94 +337,6 @@ func TestConnManager_Watch(t *testing.T) {
 	assert.Equal(t, true, exist)
 	s.Stop()
 
-}
-
-func TestClient_ReadEntities(t *testing.T) {
-	s := setup(t, getTLSServerConfig(t))
-
-	connManager := NewConnManager()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	target1 := createTestDestination(t, targetID1, deviceID1, true)
-
-	err := connManager.Connect(ctx, target1)
-	assert.NoError(t, err)
-	conn, err := connManager.GetByTarget(ctx, targetID1)
-	assert.NoError(t, err)
-	assert.NotNil(t, conn)
-
-	entityChan := make(chan *p4api.Entity)
-	err = conn.ReadEntities(ctx, &p4api.ReadRequest{}, entityChan)
-	assert.NoError(t, err)
-	entityCounter := 0
-	for entity := range entityChan {
-		t.Log(entity.GetTableEntry().TableId)
-		entityCounter++
-	}
-	assert.Equal(t, 2, entityCounter)
-
-	s.Stop()
-
-}
-
-func TestClient_SetMasterArbitration(t *testing.T) {
-	s := setup(t, getTLSServerConfig(t))
-
-	connManager := NewConnManager()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	target1 := createTestDestination(t, targetID1, deviceID1, true)
-	target2 := createTestDestination(t, targetID2, deviceID2, true)
-
-	err := connManager.Connect(ctx, target1)
-	assert.NoError(t, err)
-
-	err = connManager.Connect(ctx, target2)
-	assert.NoError(t, err)
-
-	conn1, err := connManager.GetByTarget(ctx, targetID1)
-	assert.NoError(t, err)
-	assert.NotNil(t, conn1)
-
-	conn2, err := connManager.GetByTarget(ctx, targetID2)
-	assert.NoError(t, err)
-	assert.NotNil(t, conn2)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		for i := 0; i < 10; i++ {
-			resp, err := conn1.RecvArbitrationResponse()
-			assert.NoError(t, err)
-			assert.Equal(t, uint64(1), resp.Arbitration.ElectionId.Low)
-			//t.Log(resp)
-		}
-		for i := 0; i < 10; i++ {
-			resp, err := conn2.RecvArbitrationResponse()
-			assert.NoError(t, err)
-			assert.Equal(t, uint64(2), resp.Arbitration.ElectionId.Low)
-			//t.Log(resp)
-		}
-		wg.Done()
-	}()
-
-	assert.NoError(t, err)
-	for i := 0; i < 10; i++ {
-		err = conn2.SendArbitrationRequest(deviceID2, 2, "")
-		assert.NoError(t, err)
-	}
-
-	for i := 0; i < 10; i++ {
-		err = conn1.SendArbitrationRequest(deviceID1, 1, "")
-		assert.NoError(t, err)
-	}
-
-	wg.Wait()
-
-	s.Stop()
 }
 
 func TestClient_SetForwardingPipelineConfig(t *testing.T) {
