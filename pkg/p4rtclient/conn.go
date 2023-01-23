@@ -18,12 +18,16 @@ type Conn interface {
 	Client
 	ID() ConnID
 	TargetID() topoapi.ID
+	DeviceID() uint64
+	RoleName() string
 }
 
 type conn struct {
 	*client
 	id       ConnID
 	targetID topoapi.ID // topology entity ID
+	roleName string
+	deviceID uint64
 }
 
 // ID returns connection ID
@@ -36,6 +40,16 @@ func (c conn) TargetID() topoapi.ID {
 	return c.targetID
 }
 
+// RoleName returns the connection role name
+func (c conn) RoleName() string {
+	return c.roleName
+}
+
+// DeviceID returns device ID
+func (c conn) DeviceID() uint64 {
+	return c.deviceID
+}
+
 func newConnID() ConnID {
 	connID := ConnID(uri.NewURI(
 		uri.WithScheme("uuid"),
@@ -43,11 +57,13 @@ func newConnID() ConnID {
 	return connID
 }
 
-func newConn(targetID topoapi.ID, p4rtClient *client) Conn {
+func newConn(targetID topoapi.ID, p4rtClient *client, deviceID uint64, roleName string) Conn {
 	conn := &conn{
 		client:   p4rtClient,
 		id:       newConnID(),
 		targetID: targetID,
+		deviceID: deviceID,
+		roleName: roleName,
 	}
 	return conn
 }

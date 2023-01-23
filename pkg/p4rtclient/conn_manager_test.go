@@ -8,6 +8,7 @@ import (
 	"context"
 	topoapi "github.com/onosproject/onos-api/go/onos/topo"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
+	"github.com/onosproject/onos-net-lib/pkg/p4utils"
 	p4api "github.com/p4lang/p4runtime/go/p4/v1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/genproto/googleapis/rpc/status"
@@ -134,6 +135,7 @@ func (s testServer) StreamChannel(server p4api.P4Runtime_StreamChannelServer) er
 							Code: 0,
 						},
 						DeviceId: v.Arbitration.DeviceId,
+						Role:     req.GetArbitration().Role,
 					},
 				},
 			}
@@ -213,7 +215,7 @@ func createTestDestination(t *testing.T, targetID string, deviceID uint64, insec
 		tlsOptions.Insecure = insecure
 	}
 	dest := &Destination{
-		TargetID: targetID,
+		TargetID: topoapi.ID(targetID),
 		DeviceID: uint64(1),
 		TLS:      tlsOptions,
 		Endpoint: &topoapi.Endpoint{
@@ -349,4 +351,44 @@ func TestClient_SetForwardingPipelineConfig(t *testing.T) {
 	assert.NoError(t, err)
 	s.Stop()
 
+}
+
+func TestClient_SetMasterArbitration(t *testing.T) {
+	s := setup(t, getTLSServerConfig(t))
+
+	connManager := NewConnManager()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	target1 := createTestDestination(t, targetID1, deviceID1, true)
+	target2 := createTestDestination(t, targetID2, deviceID2, true)
+
+	_, err := connManager.Connect(ctx, target1)
+	assert.NoError(t, err)
+
+	_, err = connManager.Connect(ctx, target2)
+	assert.NoError(t, err)
+
+	conn1, err := connManager.GetByTarget(ctx, targetID1)
+	assert.NoError(t, err)
+	assert.NotNil(t, conn1)
+
+	conn2, err := connManager.GetByTarget(ctx, targetID2)
+	assert.NoError(t, err)
+	assert.NotNil(t, conn2)
+
+	assert.NoError(t, err)
+
+	role := p4utils.NewStratumRole("test1", 0, []byte{}, false, true)
+	resp, err := conn1.PerformMasterArbitration(deviceID1, role)
+	assert.NoError(t, err)
+	assert.Equal(t, "test1", resp.Arbitration.Role.Name)
+
+	role2 := p4utils.NewStratumRole("test2", 0, []byte{}, false, true)
+	resp, err = conn2.PerformMasterArbitration(deviceID2, role2)
+	assert.Equal(t, "test2", resp.Arbitration.Role.Name)
+
+	assert.NoError(t, err)
+	s.Stop()
 }
