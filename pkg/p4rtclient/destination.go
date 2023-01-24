@@ -16,13 +16,15 @@ type Destination struct {
 	// Endpoint P4runtime server endpoint address
 	Endpoint *topoapi.Endpoint
 	// TargetID is the topology target entity ID
-	TargetID string
+	TargetID topoapi.ID
 	// Timeout is the connection timeout
 	Timeout time.Duration
 	// TLS config to use when connecting to target.
 	TLS *topoapi.TLSOptions
 	// DeviceID is the numerical ID to be used for p4runtime API interactions
 	DeviceID uint64
+	// RoleName a name given to a connection role
+	RoleName string
 }
 
 func setCertificate(pathCert string, pathKey string) (tls.Certificate, error) {

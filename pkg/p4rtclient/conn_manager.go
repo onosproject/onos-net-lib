@@ -80,7 +80,7 @@ func (m *connManager) GetByTarget(ctx context.Context, targetID topoapi.ID) (Cli
 // Connect makes a gRPC connection to the target
 func (m *connManager) Connect(ctx context.Context, destination *Destination) (Client, error) {
 	m.connsMu.RLock()
-	targetID := topoapi.ID(destination.TargetID)
+	targetID := destination.TargetID
 	if targetID == "" {
 		targetID = topoapi.ID(fmt.Sprintf(destination.Endpoint.Address, ":", destination.Endpoint.Port))
 	}
@@ -105,48 +105,49 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) (Cl
 	tlsOptions := destination.TLS
 	tlsConfig := &tls.Config{}
 	addr := fmt.Sprintf("%s:%d", destination.Endpoint.Address, destination.Endpoint.Port)
-
-	if tlsOptions.Plain {
-		log.Infow("Plain (non TLS) connection to", "P4 runtime server address", addr)
-	} else {
-		if tlsOptions.Insecure {
-			log.Infow("Insecure TLS connection to ", "P4 runtime server address", addr)
-			tlsConfig = &tls.Config{InsecureSkipVerify: true}
+	if tlsOptions != nil {
+		if tlsOptions.Plain {
+			log.Infow("Plain (non TLS) connection to", "P4 runtime server address", addr)
 		} else {
-			log.Infow("Secure TLS connection to ", "P4 runtime server address", addr)
-		}
-		if tlsOptions.CaCert == "" {
-			log.Info("Loading default CA")
-			defaultCertPool, err := certs.GetCertPoolDefault()
-			if err != nil {
-				return nil, err
+			if tlsOptions.Insecure {
+				log.Infow("Insecure TLS connection to ", "P4 runtime server address", addr)
+				tlsConfig = &tls.Config{InsecureSkipVerify: true}
+			} else {
+				log.Infow("Secure TLS connection to ", "P4 runtime server address", addr)
 			}
-			tlsConfig.RootCAs = defaultCertPool
-		} else {
-			certPool, err := certs.GetCertPool(tlsOptions.CaCert)
-			if err != nil {
-				return nil, err
+			if tlsOptions.CaCert == "" {
+				log.Info("Loading default CA")
+				defaultCertPool, err := certs.GetCertPoolDefault()
+				if err != nil {
+					return nil, err
+				}
+				tlsConfig.RootCAs = defaultCertPool
+			} else {
+				certPool, err := certs.GetCertPool(tlsOptions.CaCert)
+				if err != nil {
+					return nil, err
+				}
+				tlsConfig.RootCAs = certPool
 			}
-			tlsConfig.RootCAs = certPool
-		}
-		if tlsOptions.Cert == "" && tlsOptions.Key == "" {
-			log.Info("Loading default certificates")
-			clientCerts, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
-			if err != nil {
-				return nil, err
+			if tlsOptions.Cert == "" && tlsOptions.Key == "" {
+				log.Info("Loading default certificates")
+				clientCerts, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
+				if err != nil {
+					return nil, err
+				}
+				tlsConfig.Certificates = []tls.Certificate{clientCerts}
+			} else if tlsOptions.Cert != "" && tlsOptions.Key != "" {
+				// Load certs given for device
+				tlsCerts, err := setCertificate(tlsOptions.Cert, tlsOptions.Key)
+				if err != nil {
+					return nil, errors.NewInvalid(err.Error())
+				}
+				tlsConfig.Certificates = []tls.Certificate{tlsCerts}
+			} else {
+				log.Errorw("Can't load Ca=%s , Cert=%s , key=%s for %v, trying with insecure connection",
+					"CA", tlsOptions.CaCert, "Cert", tlsOptions.Cert, "Key", tlsOptions.Key, "P4 runtime server address", addr)
+				tlsConfig = &tls.Config{InsecureSkipVerify: true}
 			}
-			tlsConfig.Certificates = []tls.Certificate{clientCerts}
-		} else if tlsOptions.Cert != "" && tlsOptions.Key != "" {
-			// Load certs given for device
-			tlsCerts, err := setCertificate(tlsOptions.Cert, tlsOptions.Key)
-			if err != nil {
-				return nil, errors.NewInvalid(err.Error())
-			}
-			tlsConfig.Certificates = []tls.Certificate{tlsCerts}
-		} else {
-			log.Errorw("Can't load Ca=%s , Cert=%s , key=%s for %v, trying with insecure connection",
-				"CA", tlsOptions.CaCert, "Cert", tlsOptions.Cert, "Key", tlsOptions.Key, "P4 runtime server address", addr)
-			tlsConfig = &tls.Config{InsecureSkipVerify: true}
 		}
 	}
 
@@ -161,13 +162,18 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) (Cl
 	}
 
 	m.targets[targetID] = p4rtClient
+	streamChannel, err := p4rtClient.p4runtimeClient.StreamChannel(context.Background())
+	if err != nil {
+		log.Errorw("Cannot open a p4rt stream for connection", "targetID", destination.TargetID, "error", err)
+		return nil, err
+	}
+	p4rtClient.streamClient.streamChannel = streamChannel
 	go func() {
 		var conn Conn
 		state := clientConn.GetState()
 		switch state {
 		case connectivity.Ready:
-			conn = newConn(targetID, p4rtClient)
-
+			conn = newConn(targetID, p4rtClient, destination.DeviceID, destination.RoleName)
 			m.addConn(conn)
 		}
 
@@ -182,7 +188,7 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) (Cl
 			switch state {
 			case connectivity.Ready:
 				if conn == nil {
-					conn = newConn(targetID, p4rtClient)
+					conn = newConn(targetID, p4rtClient, destination.DeviceID, destination.RoleName)
 					if err != nil {
 						log.Warnw("Cannot open a p4rt stream for connection", "targetID", targetID, "error", err)
 						continue
@@ -302,6 +308,11 @@ func connect(ctx context.Context, d Destination, tlsConfig *tls.Config, opts ...
 	p4rtClient := &client{
 		grpcClient:      conn,
 		p4runtimeClient: cl,
+		streamClient: &streamClient{
+			p4runtimeClient: cl,
+			deviceID:        d.DeviceID,
+		},
+		deviceID: d.DeviceID,
 	}
 
 	return p4rtClient, conn, nil
