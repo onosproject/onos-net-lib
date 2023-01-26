@@ -17,6 +17,7 @@ import (
 type Client interface {
 	io.Closer
 	StreamClient
+	ClientConn() *grpc.ClientConn
 	Write(ctx context.Context, in *p4api.WriteRequest, opts ...grpc.CallOption) (*p4api.WriteResponse, error)
 	// Read one or more P4 entities from the target.
 	Read(ctx context.Context, in *p4api.ReadRequest, opts ...grpc.CallOption) (p4api.P4Runtime_ReadClient, error)
@@ -35,6 +36,10 @@ type client struct {
 	p4runtimeClient p4api.P4RuntimeClient
 	streamClient    *streamClient
 	deviceID        uint64
+}
+
+func (c *client) ClientConn() *grpc.ClientConn {
+	return c.grpcClient
 }
 
 func (c *client) PerformMasterArbitration(role *p4api.Role) (*p4api.StreamMessageResponse_Arbitration, error) {
