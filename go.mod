@@ -11,6 +11,7 @@ require (
 	github.com/onosproject/onos-lib-go v0.9.5
 	github.com/openconfig/gnmi v0.0.0-20220920173703-480bf53a74d2
 	github.com/p4lang/p4runtime v1.4.0-rc.5
+	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.1
 	google.golang.org/genproto v0.0.0-20220608133413-ed9918b62aac
 	google.golang.org/grpc v1.47.0
@@ -32,6 +33,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
 	github.com/jcmturner/gofork v1.0.0 // indirect
