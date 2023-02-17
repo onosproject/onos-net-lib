@@ -381,12 +381,12 @@ func TestClient_SetMasterArbitration(t *testing.T) {
 	assert.NoError(t, err)
 
 	role := p4utils.NewStratumRole("test1", 0, []byte{}, false, true)
-	resp, err := conn1.PerformMasterArbitration(role)
+	resp, err := conn1.PerformMasterArbitration(ctx, role)
 	assert.NoError(t, err)
 	assert.Equal(t, "test1", resp.Arbitration.Role.Name)
 
 	role2 := p4utils.NewStratumRole("test2", 0, []byte{}, false, true)
-	resp, err = conn2.PerformMasterArbitration(role2)
+	resp, err = conn2.PerformMasterArbitration(ctx, role2)
 	assert.Equal(t, "test2", resp.Arbitration.Role.Name)
 
 	assert.NoError(t, err)

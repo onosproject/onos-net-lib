@@ -42,8 +42,8 @@ func (c *client) ClientConn() *grpc.ClientConn {
 	return c.grpcClient
 }
 
-func (c *client) PerformMasterArbitration(role *p4api.Role) (*p4api.StreamMessageResponse_Arbitration, error) {
-	resp, err := c.streamClient.PerformMasterArbitration(role)
+func (c *client) PerformMasterArbitration(ctx context.Context, role *p4api.Role) (*p4api.StreamMessageResponse_Arbitration, error) {
+	resp, err := c.streamClient.PerformMasterArbitration(ctx, role)
 	return resp, errors.FromGRPC(err)
 }
 

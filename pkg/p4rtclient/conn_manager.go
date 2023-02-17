@@ -162,12 +162,6 @@ func (m *connManager) Connect(ctx context.Context, destination *Destination) (Cl
 	}
 
 	m.targets[targetID] = p4rtClient
-	streamChannel, err := p4rtClient.p4runtimeClient.StreamChannel(context.Background())
-	if err != nil {
-		log.Errorw("Cannot open a p4rt stream for connection", "targetID", destination.TargetID, "error", err)
-		return nil, err
-	}
-	p4rtClient.streamClient.streamChannel = streamChannel
 	go func() {
 		var conn Conn
 		state := clientConn.GetState()
